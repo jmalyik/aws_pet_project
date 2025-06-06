@@ -82,7 +82,7 @@ jobs:
           terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
           terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
           echo "Starting terraform apply..."
-          terraform apply -auto-approve
+          terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
           echo "Terraform apply completed."
 
 # log  CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow

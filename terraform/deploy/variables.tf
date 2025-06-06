@@ -13,6 +13,7 @@ variable "alpha_vantage_apikey" {
 variable "bucket_name" {
   type        = string
   description = "Name of the S3 bucket"
+  default = "aws-pet-bucket"
 }
 
 variable "aws_region" {

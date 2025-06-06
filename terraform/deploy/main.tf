@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "lambda_bucket" {
-  bucket         = "aws-pet-bucket"
+  bucket         = ${var.bucket_name}
   force_destroy  = true
 }
 
