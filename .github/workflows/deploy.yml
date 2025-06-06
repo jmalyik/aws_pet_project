@@ -53,5 +53,11 @@ jobs:
           else
             echo "State file found, skipping import."
           fi
-          terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
+          terraform apply -auto-approve -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
 
+      - name: Upload Terraform debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-debug-log
+          path: terraform/deploy/terraform-debug.log
