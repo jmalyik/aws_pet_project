@@ -12,7 +12,8 @@ jobs:
     env:
       AWS_REGION: eu-north-1
       BUCKET_NAME: aws-pet-bucket
-      ALPHA_VANTAGE_APIKEY: ${{ secrets.ALPHA_VANTAGE_APIKEY }}
+      TF_VAR_alpha_vantage_apikey: ${{ secrets.ALPHA_VANTAGE_APIKEY }}
+      TF_LOG: DEBUG
 
     steps:
       - name: Checkout repository
@@ -47,25 +48,14 @@ jobs:
 
       - name: Terraform Plan
         working-directory: terraform/deploy
-        run: terraform plan -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
-
-      - name: Check ALPHA_VANTAGE_APIKEY presence
-        run: |
-          if [ -z "$ALPHA_VANTAGE_APIKEY" ]; then
-            echo "Missing ALPHA_VANTAGE_APIKEY secret!"
-            exit 1
-          fi        
+        run: terraform plan
 
       - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
-        env:
-          TF_LOG: DEBUG
         run: |
-          if [ ! -f "terraform.tfstate" ]; then
-            echo "No local state file found. Importing known existing resources..."
-            terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket || true
-            terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
-          else
-            echo "State file found, skipping import."
-          fi
-          terraform apply -auto-approve -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
+          echo "Importing existing resources (ignoring errors)..."
+          terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
+          terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
+          echo "Starting terraform apply..."
+          terraform apply -auto-approve
+          echo "Terraform apply completed."

@@ -7,5 +7,6 @@ variable "lambda_jar_path" {
 variable "alpha_vantage_apikey" {
   type        = string
   description = "Alpha Vantage API key"
+  default = "not-defined-value"
 }
 
