@@ -1,28 +1,57 @@
-name: Terraform Destroy
+name: Destroy AWS pet project Infrastructure
 
 on:
-  workflow_dispatch:  # manual execution
+  workflow_dispatch:
 
 jobs:
-  destroy:
+  destroy-infra:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+    env:
+      AWS_REGION: eu-north-1
+      # The CloudFront Distribution ID must be provided, e.g., as a repository secret or from previous outputs
+      CLOUDFRONT_DIST_ID: ${{ secrets.CLOUDFRONT_DIST_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          terraform_version: 1.5.6
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Disable CloudFront Distribution
+        run: |
+          echo "Disabling CloudFront distribution $CLOUDFRONT_DIST_ID..."
+          aws cloudfront update-distribution --id $CLOUDFRONT_DIST_ID --distribution-config "$(aws cloudfront get-distribution-config --id $CLOUDFRONT_DIST_ID --query 'DistributionConfig' | jq '.Enabled=false' )" --if-match "$(aws cloudfront get-distribution --id $CLOUDFRONT_DIST_ID --query 'ETag' --output text)"
+          echo "Disabled distribution, waiting for deployment..."
+
+      - name: Wait for CloudFront distribution to be disabled
+        run: |
+          timeout=120
+          elapsed=0
+          interval=10
+          while [ $elapsed -lt $timeout ]; do
+            status=$(aws cloudfront get-distribution --id $CLOUDFRONT_DIST_ID --query 'Distribution.Status' --output text)
+            enabled=$(aws cloudfront get-distribution --id $CLOUDFRONT_DIST_ID --query 'Distribution.DistributionConfig.Enabled' --output text)
+            echo "Status: $status, Enabled: $enabled"
+            if [ "$enabled" == "False" ] && [ "$status" == "Deployed" ]; then
+              echo "Distribution is disabled and deployed. Proceeding."
+              exit 0
+            fi
+            sleep $interval
+            elapsed=$((elapsed + interval))
+          done
+          echo "Timeout reached waiting for CloudFront distribution to be disabled."
+          exit 1
 
       - name: Terraform Init
         working-directory: terraform/destroyall
-        run: terraform init
+        run: terraform init -input=false -upgrade
 
       - name: Terraform Destroy
         working-directory: terraform/destroyall
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-north-1
         run: terraform destroy -auto-approve

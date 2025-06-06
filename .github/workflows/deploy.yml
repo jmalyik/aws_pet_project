@@ -40,7 +40,32 @@ jobs:
       - name: Build project with Maven
         run: mvn clean package
         
-        # checking the current terraform scripts before trying to apply it
+# RSA key generation for cloudfront signed URLs 
+
+      - name: Generate RSA key pair
+        id: generate_keys
+        run: |
+          openssl genrsa -out private.pem 2048
+          openssl rsa -pubout -in private.pem -out public.pem
+          # Base64 encode the private key so we can set it easily in env or output
+          PRIVATE_KEY_B64=$(base64 -w 0 private.pem)
+          echo "private_key_b64=$PRIVATE_KEY_B64" >> $GITHUB_OUTPUT
+          # Public key is plain text file, we commit it to terraform folder or pass as file
+
+      - name: Upload private key to AWS Secrets Manager
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          PRIVATE_KEY_B64: ${{ steps.generate_keys.outputs.private_key_b64 }}
+        run: |
+          echo $PRIVATE_KEY_B64 | base64 -d > private.pem
+          aws secretsmanager put-secret-value --secret-id cloudfront-private-key --secret-string file://private.pem --region $AWS_REGION || \
+          aws secretsmanager create-secret --name cloudfront-private-key --secret-string file://private.pem --region $AWS_REGION
+      
+      - name: Prepare Terraform public key file
+        run: |
+          cp public.pem terraform/deploy/public.pem
+          
+# checking the current terraform scripts before trying to apply it
         
       - name: Terraform Init
         working-directory: terraform/deploy
@@ -59,3 +84,11 @@ jobs:
           echo "Starting terraform apply..."
           terraform apply -auto-approve
           echo "Terraform apply completed."
+# log  CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
+      - name: Terraform Output CloudFront Distribution ID
+        working-directory: terraform/deploy
+        id: cloudfront_output
+        run: echo "cloudfront_distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+      
+      - name: Log CloudFront Distribution ID
+        run: echo "CloudFront Distribution ID: ${{ steps.cloudfront_output.outputs.cloudfront_distribution_id }}"
