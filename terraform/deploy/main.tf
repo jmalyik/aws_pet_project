@@ -1,29 +1,9 @@
 resource "aws_s3_bucket" "lambda_bucket" {
   bucket = "aws-pet-bucket"
-  acl    = "public-read"
   force_destroy = true
 
-  tags = {
-    Name        = "AWS Pet Project Bucket"
-    Environment = "dev"
-  }
-}
-
-resource "aws_s3_bucket_policy" "bucket_policy" {
-  bucket = aws_s3_bucket.lambda_bucket.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = ["s3:GetObject"]
-        Resource  = ["${aws_s3_bucket.lambda_bucket.arn}/*"]
-      }
-    ]
-  })
+  # Ne használjunk ACL-t
+  object_ownership = "BucketOwnerEnforced"
 }
 
 resource "aws_s3_object" "lambda_jar" {
@@ -32,7 +12,6 @@ resource "aws_s3_object" "lambda_jar" {
   source = var.lambda_jar_path
   etag   = filemd5(var.lambda_jar_path)
 }
-
 
 resource "aws_iam_role" "lambda_exec_role" {
   name = "lambda_execution_role"
