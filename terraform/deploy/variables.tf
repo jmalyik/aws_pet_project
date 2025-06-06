@@ -8,3 +8,4 @@ variable "alpha_vantage_apikey" {
   type        = string
   description = "Alpha Vantage API key"
 }
+

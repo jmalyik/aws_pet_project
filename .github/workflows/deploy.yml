@@ -38,12 +38,26 @@ jobs:
 
       - name: Build project with Maven
         run: mvn clean package
+        
+        # checking the current terraform scripts before trying to apply it
+        
+      - name: Terraform Plan
+        working-directory: terraform/deploy
+        run: terraform plan -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
 
+        # albeit a bit redundant, but want to be sure that the secret is there and available
+
+      - name: Check ALPHA_VANTAGE_APIKEY presence
+        run: |
+          if [ -z "$ALPHA_VANTAGE_APIKEY" ]; then
+            echo "Missing ALPHA_VANTAGE_APIKEY secret!"
+            exit 1
+          fi        
+        
       - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
         env:
           TF_LOG: DEBUG
-          TF_LOG_PATH: terraform-debug.log
         run: |
           terraform init -input=false
           if [ ! -f "terraform.tfstate" ]; then
@@ -54,10 +68,3 @@ jobs:
             echo "State file found, skipping import."
           fi
           terraform apply -auto-approve -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
-
-      - name: Upload Terraform debug log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-debug-log
-          path: terraform/deploy/terraform-debug.log
