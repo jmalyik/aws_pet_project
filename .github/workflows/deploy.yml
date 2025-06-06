@@ -42,10 +42,16 @@ jobs:
       - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
         env:
-          TF_LOG: INFO        
+          TF_LOG: DEBUG
+          TF_LOG_PATH: terraform-debug.log
         run: |
-          terraform init -input=false -upgrade
-          # importing if it would not be in state file
-          terraform state show aws_s3_bucket.lambda_bucket || terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket
-          terraform state show aws_iam_role.lambda_exec_role || terraform import aws_iam_role.lambda_exec_role lambda_execution_role
-          terraform apply -input=false -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
+          terraform init -input=false
+          if [ ! -f "terraform.tfstate" ]; then
+            echo "No local state file found. Importing known existing resources..."
+            terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket || true
+            terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
+          else
+            echo "State file found, skipping import."
+          fi
+          terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
+
