@@ -47,6 +47,7 @@ jobs:
         working-directory: terraform/deploy
         run: |
           terraform init -input=false
-          terraform state show aws_s3_bucket.lambda_bucket || terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket
-          terraform state show aws_iam_role.lambda_exec_role || terraform import aws_iam_role.lambda_exec_role lambda_execution_role
+          # Try to import, but ignore error if already imported or if fails (e.g. not yet created)
+          terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket || true
+          terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
           terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
