@@ -90,7 +90,7 @@ jobs:
           terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
           terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
           terraform import aws_lambda_function.pet_lambda aws-pet-project || true
-          terraform import aws_lambda_permission.cloudwatch_permission aws-pet-project/AllowExecutionFromCloudWatch
+          terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch
           
           echo "Starting terraform apply..."
           terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
