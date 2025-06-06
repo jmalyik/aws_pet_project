@@ -1,11 +1,15 @@
 resource "aws_s3_bucket" "lambda_bucket" {
-  bucket = "aws-pet-bucket"
-  force_destroy = true
-
-  # Ne használjunk ACL-t
-  object_ownership = "BucketOwnerEnforced"
+  bucket         = "aws-pet-bucket"
+  force_destroy  = true
 }
 
+resource "aws_s3_bucket_ownership_controls" "lambda_bucket_ownership" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
 resource "aws_s3_object" "lambda_jar" {
   bucket = aws_s3_bucket.lambda_bucket.id
   key    = "aws-pet-project.jar"
