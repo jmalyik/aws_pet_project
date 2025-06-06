@@ -39,15 +39,13 @@ jobs:
       - name: Build project with Maven
         run: mvn clean package
 
-      - name: Initialize Terraform
-        working-directory: terraform/deploy
-        run: terraform init -upgrade
-
       - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
+        env:
+          TF_LOG: INFO        
         run: |
-          terraform init -input=false
-          # Try to import, but ignore error if already imported or if fails (e.g. not yet created)
-          terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket || true
-          terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
-          terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
+          terraform init -input=false -upgrade
+          # importing if it would not be in state file
+          terraform state show aws_s3_bucket.lambda_bucket || terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket
+          terraform state show aws_iam_role.lambda_exec_role || terraform import aws_iam_role.lambda_exec_role lambda_execution_role
+          terraform apply -input=false -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
