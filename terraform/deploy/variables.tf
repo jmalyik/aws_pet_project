@@ -10,3 +10,13 @@ variable "alpha_vantage_apikey" {
   default = "not-defined-value"
 }
 
+variable "bucket_name" {
+  type        = string
+  description = "Name of the S3 bucket"
+}
+
+variable "aws_region" {
+  type        = string
+  default     = "eu-north-1"
+  description = "AWS Region to deploy into"
+}
