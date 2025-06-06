@@ -3,6 +3,8 @@ resource "aws_s3_bucket" "lambda_bucket" {
   force_destroy  = true
 }
 
+# to prevent other AWS users to write to our bucket
+
 resource "aws_s3_bucket_ownership_controls" "lambda_bucket_ownership" {
   bucket = aws_s3_bucket.lambda_bucket.id
 
@@ -10,6 +12,7 @@ resource "aws_s3_bucket_ownership_controls" "lambda_bucket_ownership" {
     object_ownership = "BucketOwnerEnforced"
   }
 }
+
 resource "aws_s3_object" "lambda_jar" {
   bucket = aws_s3_bucket.lambda_bucket.id
   key    = "aws-pet-project.jar"
@@ -29,6 +32,26 @@ resource "aws_iam_role" "lambda_exec_role" {
       Effect = "Allow",
       Sid    = ""
     }]
+  })
+}
+
+# to let lambda to write the bucket, we need this policy
+
+resource "aws_iam_role_policy" "lambda_s3_put_policy" {
+  name = "lambda-s3-put-policy"
+  role = aws_iam_role.lambda_exec_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:PutObject"
+        ],
+        Resource = "arn:aws:s3:::aws-pet-bucket/stocks/*"
+      }
+    ]
   })
 }
 
