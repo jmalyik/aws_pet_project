@@ -84,11 +84,18 @@ jobs:
           echo "Starting terraform apply..."
           terraform apply -auto-approve
           echo "Terraform apply completed."
+
 # log  CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
-      - name: Terraform Output CloudFront Distribution ID
-        working-directory: terraform/deploy
+      - name: Get CloudFront Distribution ID output from Terraform
         id: cloudfront_output
-        run: echo "cloudfront_distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+        working-directory: terraform/deploy
+        run: |
+          dist_id=$(terraform output -raw cloudfront_distribution_id)
+          echo "cloudfront_distribution_id=$dist_id" >> "$GITHUB_OUTPUT"
       
       - name: Log CloudFront Distribution ID
-        run: echo "CloudFront Distribution ID: ${{ steps.cloudfront_output.outputs.cloudfront_distribution_id }}"
+        run: |
+          echo "CloudFront Distribution ID: $CLOUDFRONT_DIST_ID"
+        env:
+          CLOUDFRONT_DIST_ID: ${{ steps.cloudfront_output.outputs.cloudfront_distribution_id }}
+
