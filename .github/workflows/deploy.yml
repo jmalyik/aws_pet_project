@@ -43,6 +43,10 @@ jobs:
         working-directory: terraform/deploy
         run: terraform init -upgrade
 
-      - name: Terraform Apply
+      - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
-        run: terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
+        run: |
+          terraform init -input=false
+          terraform state show aws_s3_bucket.lambda_bucket || terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket
+          terraform state show aws_iam_role.lambda_exec_role || terraform import aws_iam_role.lambda_exec_role lambda_execution_role
+          terraform apply -auto-approve -var="alpha_vantage_apikey=${{ secrets.ALPHA_VANTAGE_APIKEY }}"
