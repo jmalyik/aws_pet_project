@@ -14,8 +14,8 @@ resource "aws_lambda_function" "pet_project_lambda" {
 
 # S3 bucket for deletion (force_destroy ensures content is also deleted)
 resource "aws_s3_bucket" "pet_project_bucket" {
-  bucket         = "aws-pet-bucket"
-  force_destroy  = true
+  bucket        = "aws-pet-bucket"
+  force_destroy = true
 }
 
 # CloudWatch Event Rule used for scheduling

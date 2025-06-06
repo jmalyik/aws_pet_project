@@ -1,6 +1,6 @@
 resource "aws_s3_bucket" "lambda_bucket" {
-  bucket         = "${var.bucket_name}"
-  force_destroy  = true
+  bucket        = var.bucket_name
+  force_destroy = true
 }
 
 # to prevent other AWS users to write to our bucket

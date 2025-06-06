@@ -7,13 +7,13 @@ variable "lambda_jar_path" {
 variable "alpha_vantage_apikey" {
   type        = string
   description = "Alpha Vantage API key"
-  default = "not-defined-value"
+  default     = "not-defined-value"
 }
 
 variable "bucket_name" {
   type        = string
   description = "Name of the S3 bucket"
-  default = "aws-pet-bucket"
+  default     = "aws-pet-bucket"
 }
 
 variable "aws_region" {
