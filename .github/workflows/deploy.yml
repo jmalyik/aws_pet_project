@@ -41,11 +41,13 @@ jobs:
         
         # checking the current terraform scripts before trying to apply it
         
+      - name: Terraform Init
+        working-directory: terraform/deploy
+        run: terraform init -input=false -upgrade
+
       - name: Terraform Plan
         working-directory: terraform/deploy
         run: terraform plan -var="alpha_vantage_apikey=$ALPHA_VANTAGE_APIKEY"
-
-        # albeit a bit redundant, but want to be sure that the secret is there and available
 
       - name: Check ALPHA_VANTAGE_APIKEY presence
         run: |
@@ -53,13 +55,12 @@ jobs:
             echo "Missing ALPHA_VANTAGE_APIKEY secret!"
             exit 1
           fi        
-        
+
       - name: Import existing resources if not in state then apply
         working-directory: terraform/deploy
         env:
           TF_LOG: DEBUG
         run: |
-          terraform init -input=false
           if [ ! -f "terraform.tfstate" ]; then
             echo "No local state file found. Importing known existing resources..."
             terraform import aws_s3_bucket.lambda_bucket aws-pet-bucket || true
