@@ -79,6 +79,11 @@ jobs:
         working-directory: terraform/deploy
         run: terraform validate
 
+      - name: Debug env vars
+        run: |
+          echo "BUCKET_NAME=$BUCKET_NAME"
+          echo "CLOUDFRONT_KEY_GROUP_ID=$CLOUDFRONT_KEY_GROUP_ID"
+
       - name: Terraform Plan
         working-directory: terraform/deploy
         run: terraform plan -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
