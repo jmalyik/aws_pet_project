@@ -9,6 +9,7 @@ jobs:
 
     env:
       AWS_REGION: eu-north-1
+      ARTIFACTS_BUCKET_NAME: aws-pet-project-build-artifacts 
 
     steps:
       - name: Checkout repository
@@ -55,6 +56,19 @@ jobs:
         working-directory: terraform/cloudfront-key
         run: terraform init -input=false -upgrade
 
+      - name: Import S3 bucket if it already exists
+        working-directory: terraform/cloudfront-key
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ARTIFACTS_BUCKET_NAME: ${{ env.ARTIFACTS_BUCKET_NAME }}
+        run: |
+          if aws s3api head-bucket --bucket "$ARTIFACTS_BUCKET_NAME" --region "$AWS_REGION" 2>/dev/null; then
+            echo "Bucket $ARTIFACTS_BUCKET_NAME exists, importing to Terraform state..."
+            terraform import aws_s3_bucket.build_artifacts "$ARTIFACTS_BUCKET_NAME" || true
+          else
+            echo "Bucket $ARTIFACTS_BUCKET_NAME does not exist, will be created by Terraform."
+          fi
+
       - name: Terraform Apply
         working-directory: terraform/cloudfront-key
         env:
@@ -73,14 +87,11 @@ jobs:
           echo "$id" > ../../CLOUDFRONT_KEY_GROUP_ID.txt
           echo "${{ env.SECRET_NAME }}" > ../../CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt
 
-      - name: Upload Key Group ID artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudfront-key-group-id
-          path: CLOUDFRONT_KEY_GROUP_ID.txt
+      - name: Upload Key Group ID to S3
+        run: aws s3 cp CLOUDFRONT_KEY_GROUP_ID.txt s3://$ARTIFACTS_BUCKET_NAME/CLOUDFRONT_KEY_GROUP_ID.txt --region $AWS_REGION
 
-      - name: Upload Private Key Secret Name artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudfront-private-key-secret-name
-          path: CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt
+      - name: Upload Private Key Secret Name to S3
+        run: aws s3 cp CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt s3://$ARTIFACTS_BUCKET_NAME/CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt --region $AWS_REGION
+
+
+

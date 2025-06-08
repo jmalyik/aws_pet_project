@@ -12,6 +12,7 @@ jobs:
     env:
       AWS_REGION: eu-north-1
       BUCKET_NAME: aws-pet-bucket
+      ARTIFACTS_BUCKET_NAME: aws-pet-project-build-artifacts 
       TF_VAR_alpha_vantage_apikey: ${{ secrets.ALPHA_VANTAGE_APIKEY }}
       TF_LOG: DEBUG
 
@@ -40,15 +41,20 @@ jobs:
       - name: Build project with Maven
         run: mvn clean package
 
-      - name: Download Private Key Secret Name artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: cloudfront-private-key-secret-name
+      - name: S3 artifact bucket existence test
+        run: |
+          if aws s3api head-bucket --bucket "$ARTIFACTS_BUCKET_NAME" --region "$AWS_REGION" 2>/dev/null; then
+            echo "Bucket $ARTIFACTS_BUCKET_NAME exists, doing nothing."
+          else
+            echo "Bucket $ARTIFACTS_BUCKET_NAME does not exist -> worfklow will fail"
+            exit 1
+          fi        
 
-      - name: Download Key Group ID artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: cloudfront-key-group-id
+      - name: Download Key Group ID from S3
+        run: aws s3 cp s3://$ARTIFACTS_BUCKET_NAME/CLOUDFRONT_KEY_GROUP_ID.txt CLOUDFRONT_KEY_GROUP_ID.txt --region $AWS_REGION
+
+      - name: Download Private Key Secret Name from S3
+        run: aws s3 cp s3://$ARTIFACTS_BUCKET_NAME/CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt --region $AWS_REGION
 
       - name: Set CLOUDFRONT_KEY_GROUP_ID and PRIVATE_KEY_SECRET_NAME env vars
         run: |
