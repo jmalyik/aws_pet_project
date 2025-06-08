@@ -24,5 +24,5 @@ variable "aws_region" {
 
 variable "cloudfront_key_group_id" {
   type        = string
-  description = "ID of the CloudFront key group"
+  description = "ID of the CloudFront key group to trust"
 }

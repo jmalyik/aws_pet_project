@@ -1,11 +1,21 @@
+variable "cf_public_key_name" {
+  type    = string
+  default = "cf-public-key"
+}
+
+variable "cf_key_group_name" {
+  type    = string
+  default = "cf-key-group"
+}
+
 resource "aws_cloudfront_public_key" "cf_public_key" {
-  name        = "cf-public-key"
+  name        = var.cf_public_key_name
   encoded_key = file("${path.module}/public.pem")
   comment     = "Public key for signed URLs"
 }
 
 resource "aws_cloudfront_key_group" "cf_key_group" {
-  name = "cf-key-group"
+  name = var.cf_key_group_name
   items = [
     aws_cloudfront_public_key.cf_public_key.id
   ]
