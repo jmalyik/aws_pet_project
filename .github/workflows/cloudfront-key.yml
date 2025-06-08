@@ -85,7 +85,7 @@ jobs:
         run: |
           id=$(terraform output -raw cloudfront_key_group_id)
           echo "$id" > ../../CLOUDFRONT_KEY_GROUP_ID.txt
-          echo "${{ env.SECRET_NAME }}" > ../../CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt
+          echo "cloudfront-private-key-${{ env.TS }}" > ../../CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt
 
       - name: Upload Key Group ID to S3
         run: aws s3 cp CLOUDFRONT_KEY_GROUP_ID.txt s3://$ARTIFACTS_BUCKET_NAME/CLOUDFRONT_KEY_GROUP_ID.txt --region $AWS_REGION
