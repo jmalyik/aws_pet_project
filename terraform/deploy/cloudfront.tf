@@ -2,6 +2,15 @@ data "aws_cloudfront_key_group" "cf_key_group" {
   name = "cf-key-group"
 }
 
+data "terraform_remote_state" "cloudfront_key" {
+  backend = "s3"
+  config = {
+    bucket = "your-remote-state-bucket"
+    key    = "cloudfront-key/terraform.tfstate"
+    region = "eu-north-1"
+  }
+}
+
 resource "aws_cloudfront_distribution" "cf_distribution" {
   enabled             = true
   default_root_object = "index.html"
@@ -22,9 +31,7 @@ resource "aws_cloudfront_distribution" "cf_distribution" {
     allowed_methods = ["GET", "HEAD"]
     cached_methods  = ["GET", "HEAD"]
 
-    trusted_key_groups = [
-      data.aws_cloudfront_key_group.cf_key_group.id
-    ]
+    trusted_key_groups = [var.cloudfront_key_group_id]
 
     forwarded_values {
       query_string = false

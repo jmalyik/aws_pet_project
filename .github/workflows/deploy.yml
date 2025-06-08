@@ -40,14 +40,15 @@ jobs:
       - name: Build project with Maven
         run: mvn clean package
 
-      - name: Check for CloudFront private key in AWS Secrets Manager
+      - name: Check for CloudFront Key Group ID in S3
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
+          BUCKET_NAME: ${{ env.BUCKET_NAME }}
         run: |
-          SECRET_NAME="cloudfront-private-key"
-          if ! aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
-            echo "❌ The secret '$SECRET_NAME' does not exist in AWS Secrets Manager."
-            echo "➡️  Please run the 'CloudFront Key Management' workflow to generate and upload the key pair before deploying."
+          FILE_KEY="CLOUDFRONT_KEY_GROUP_ID.txt"
+          if ! aws s3api head-object --bucket "$BUCKET_NAME" --key "$FILE_KEY" --region "$AWS_REGION" > /dev/null 2>&1; then
+            echo "❌ The file '$FILE_KEY' does not exist in S3 bucket '$BUCKET_NAME'."
+            echo "➡️  Please run the 'CloudFront Key Management' workflow to generate and upload the key group ID before deploying."
             exit 1
           fi
 
@@ -57,6 +58,15 @@ jobs:
         run: |
           SECRET_NAME="cloudfront-private-key"
           aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text > private.pem
+
+      - name: Download Key Group ID artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudfront-key-group-id
+
+      - name: Set CLOUDFRONT_KEY_GROUP_ID env var
+        run: |
+          echo "CLOUDFRONT_KEY_GROUP_ID=$(cat CLOUDFRONT_KEY_GROUP_ID.txt)" >> $GITHUB_ENV
 
       - name: Terraform Init
         working-directory: terraform/deploy
@@ -76,7 +86,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform/deploy
-        run: terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
+        run: terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
 
       # log CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
       - name: Get CloudFront Distribution ID output from Terraform
@@ -91,4 +101,3 @@ jobs:
           echo "CloudFront Distribution ID: $CLOUDFRONT_DIST_ID"
         env:
           CLOUDFRONT_DIST_ID: ${{ steps.cloudfront_output.outputs.cloudfront_distribution_id }}
-

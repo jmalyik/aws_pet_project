@@ -37,8 +37,10 @@ jobs:
         run: |
           SECRET_NAME="cloudfront-private-key"
           if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
+            echo "Secret exists, updating value."
             aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
           else
+            echo "Secret does not exist, creating."
             aws secretsmanager create-secret --name "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
           fi
 
@@ -65,3 +67,16 @@ jobs:
       - name: Terraform Apply
         working-directory: terraform/cloudfront-key
         run: terraform apply -auto-approve
+
+      - name: Get CloudFront Key Group ID output from Terraform
+        id: keygroup_output
+        working-directory: terraform/cloudfront-key
+        run: |
+          id=$(terraform output -raw cloudfront_key_group_id)
+          echo "$id" > ../../CLOUDFRONT_KEY_GROUP_ID.txt
+
+      - name: Upload Key Group ID artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudfront-key-group-id
+          path: CLOUDFRONT_KEY_GROUP_ID.txt

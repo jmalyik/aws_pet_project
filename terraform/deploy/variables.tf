@@ -21,3 +21,8 @@ variable "aws_region" {
   default     = "eu-north-1"
   description = "AWS Region to deploy into"
 }
+
+variable "cloudfront_key_group_id" {
+  type        = string
+  description = "ID of the CloudFront key group"
+}
