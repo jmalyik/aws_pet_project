@@ -100,10 +100,6 @@ jobs:
         working-directory: terraform/deploy
         run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_function.pet_lambda aws-pet-project
 
-      - name: Terraform Import Lambda CloudWatch Permission
-        working-directory: terraform/deploy
-        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_permission.cloudwatch_permission aws-pet-project/AllowExecutionFromCloudWatch 
-
       - name: Terraform Import Lambda Allow Events Permission
         working-directory: terraform/deploy
         run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch 
