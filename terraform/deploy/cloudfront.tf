@@ -1,12 +1,3 @@
-data "terraform_remote_state" "cloudfront_key" {
-  backend = "s3"
-  config = {
-    bucket = "your-remote-state-bucket"
-    key    = "cloudfront-key/terraform.tfstate"
-    region = "eu-north-1"
-  }
-}
-
 resource "aws_cloudfront_distribution" "cf_distribution" {
   enabled             = true
   default_root_object = "index.html"
