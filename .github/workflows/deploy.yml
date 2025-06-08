@@ -88,16 +88,22 @@ jobs:
         working-directory: terraform/deploy
         run: terraform plan -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
 
-      - name: Terraform Apply
+      - name: Terraform Import S3 Bucket
+        working-directory: terraform/deploy
+        run: terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
+
+      - name: Terraform Import Existing Resources
         working-directory: terraform/deploy
         run: |
           echo "Importing existing resources (ignoring errors)..."
-          terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
           terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
           terraform import aws_lambda_function.pet_lambda aws-pet-project || true
           terraform import aws_lambda_permission.cloudwatch_permission aws-pet-project/AllowExecutionFromCloudWatch || true
-          terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch || true
-          terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
+          terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch
+
+      - name: Terraform Apply
+        working-directory: terraform/deploy
+        run: terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
 
       # log CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
       - name: Get CloudFront Distribution ID output from Terraform
