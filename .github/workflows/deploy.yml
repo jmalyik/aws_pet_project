@@ -58,8 +58,15 @@ jobs:
           PRIVATE_KEY_B64: ${{ steps.generate_keys.outputs.private_key_b64 }}
         run: |
           echo $PRIVATE_KEY_B64 | base64 -d > private.pem
-          aws secretsmanager put-secret-value --secret-id cloudfront-private-key --secret-string file://private.pem --region $AWS_REGION || \
-          aws secretsmanager create-secret --name cloudfront-private-key --secret-string file://private.pem --region $AWS_REGION
+          SECRET_NAME="cloudfront-private-key"
+          set -e
+          if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
+            echo "Secret exists, updating..."
+            aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
+          else
+            echo "Secret does not exist, creating..."
+            aws secretsmanager create-secret --name "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
+          fi
       
       - name: Prepare Terraform public key file
         run: |
