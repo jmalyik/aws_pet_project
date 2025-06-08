@@ -1,7 +1,3 @@
-data "aws_cloudfront_key_group" "cf_key_group" {
-  name = "cf-key-group"
-}
-
 data "terraform_remote_state" "cloudfront_key" {
   backend = "s3"
   config = {
