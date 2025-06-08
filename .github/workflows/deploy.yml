@@ -40,33 +40,26 @@ jobs:
       - name: Build project with Maven
         run: mvn clean package
 
-      - name: Check for CloudFront Key Group ID in S3
-        env:
-          AWS_REGION: ${{ env.AWS_REGION }}
-          BUCKET_NAME: ${{ env.BUCKET_NAME }}
-        run: |
-          FILE_KEY="CLOUDFRONT_KEY_GROUP_ID.txt"
-          if ! aws s3api head-object --bucket "$BUCKET_NAME" --key "$FILE_KEY" --region "$AWS_REGION" > /dev/null 2>&1; then
-            echo "❌ The file '$FILE_KEY' does not exist in S3 bucket '$BUCKET_NAME'."
-            echo "➡️  Please run the 'CloudFront Key Management' workflow to generate and upload the key group ID before deploying."
-            exit 1
-          fi
-
-      - name: Download private key from AWS Secrets Manager
-        env:
-          AWS_REGION: ${{ env.AWS_REGION }}
-        run: |
-          SECRET_NAME="cloudfront-private-key"
-          aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text > private.pem
+      - name: Download Private Key Secret Name artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudfront-private-key-secret-name
 
       - name: Download Key Group ID artifact
         uses: actions/download-artifact@v4
         with:
           name: cloudfront-key-group-id
 
-      - name: Set CLOUDFRONT_KEY_GROUP_ID env var
+      - name: Set CLOUDFRONT_KEY_GROUP_ID and PRIVATE_KEY_SECRET_NAME env vars
         run: |
           echo "CLOUDFRONT_KEY_GROUP_ID=$(cat CLOUDFRONT_KEY_GROUP_ID.txt)" >> $GITHUB_ENV
+          echo "PRIVATE_KEY_SECRET_NAME=$(cat CLOUDFRONT_PRIVATE_KEY_SECRET_NAME.txt)" >> $GITHUB_ENV      
+
+      - name: Download private key from AWS Secrets Manager
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          aws secretsmanager get-secret-value --secret-id "$PRIVATE_KEY_SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text > private.pem
 
       - name: Terraform Init
         working-directory: terraform/deploy
@@ -101,3 +94,4 @@ jobs:
           echo "CloudFront Distribution ID: $CLOUDFRONT_DIST_ID"
         env:
           CLOUDFRONT_DIST_ID: ${{ steps.cloudfront_output.outputs.cloudfront_distribution_id }}
+
