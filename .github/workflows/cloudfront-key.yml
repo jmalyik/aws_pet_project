@@ -64,6 +64,17 @@ jobs:
         working-directory: terraform/cloudfront-key
         run: terraform plan
 
+      - name: Import existing CloudFront public key if needed
+        working-directory: terraform/cloudfront-key
+        run: |
+          PUBLIC_KEY_ID=$(aws cloudfront list-public-keys --query "PublicKeyList.Items[?Name=='cf-public-key'].Id" --output text)
+          if [ ! -z "$PUBLIC_KEY_ID" ]; then
+            echo "Importing existing CloudFront public key with ID $PUBLIC_KEY_ID"
+            terraform import aws_cloudfront_public_key.cf_public_key $PUBLIC_KEY_ID || true
+          else
+            echo "No existing CloudFront public key found, will create new."
+          fi
+
       - name: Terraform Apply
         working-directory: terraform/cloudfront-key
         run: terraform apply -auto-approve
