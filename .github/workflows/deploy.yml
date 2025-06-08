@@ -90,16 +90,23 @@ jobs:
 
       - name: Terraform Import S3 Bucket
         working-directory: terraform/deploy
-        run: terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
+        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_s3_bucket.lambda_bucket $BUCKET_NAME
 
-      - name: Terraform Import Existing Resources
+      - name: Terraform Import IAM Role
         working-directory: terraform/deploy
-        run: |
-          echo "Importing existing resources (ignoring errors)..."
-          terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
-          terraform import aws_lambda_function.pet_lambda aws-pet-project || true
-          terraform import aws_lambda_permission.cloudwatch_permission aws-pet-project/AllowExecutionFromCloudWatch || true
-          terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch
+        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_iam_role.lambda_exec_role lambda_execution_role 
+
+      - name: Terraform Import Lambda Function
+        working-directory: terraform/deploy
+        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_function.pet_lambda aws-pet-project
+
+      - name: Terraform Import Lambda CloudWatch Permission
+        working-directory: terraform/deploy
+        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_permission.cloudwatch_permission aws-pet-project/AllowExecutionFromCloudWatch 
+
+      - name: Terraform Import Lambda Allow Events Permission
+        working-directory: terraform/deploy
+        run: terraform import -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID" aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch 
 
       - name: Terraform Apply
         working-directory: terraform/deploy
