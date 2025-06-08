@@ -81,11 +81,11 @@ jobs:
 
       - name: Terraform Plan
         working-directory: terraform/deploy
-        run: terraform plan 
+        run: terraform plan -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
 
       - name: Terraform Apply
         working-directory: terraform/deploy
-        run: terraform apply -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
+        run: terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME" -var="cloudfront_key_group_id=$CLOUDFRONT_KEY_GROUP_ID"
 
       # log CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
       - name: Get CloudFront Distribution ID output from Terraform
