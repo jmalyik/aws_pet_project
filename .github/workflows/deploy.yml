@@ -99,6 +99,15 @@ jobs:
           terraform import aws_lambda_function.pet_lambda aws-pet-project || true
           terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch
           
+          # Import CloudFront public key if it exists
+          PUBLIC_KEY_ID=$(aws cloudfront list-public-keys --query "PublicKeyList.Items[?Name=='cf-public-key'].Id" --output text)
+          if [ ! -z "$PUBLIC_KEY_ID" ]; then
+            echo "Importing existing CloudFront public key with ID $PUBLIC_KEY_ID"
+            terraform import aws_cloudfront_public_key.cf_public_key $PUBLIC_KEY_ID || true
+          else
+            echo "No existing CloudFront public key found, will create new."
+          fi
+
           echo "Starting terraform apply..."
           terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
           echo "Terraform apply completed."
