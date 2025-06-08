@@ -39,41 +39,25 @@ jobs:
 
       - name: Build project with Maven
         run: mvn clean package
-        
-# RSA key generation for cloudfront signed URLs 
 
-      - name: Generate RSA key pair
-        id: generate_keys
-        run: |
-          openssl genrsa -out private.pem 2048
-          openssl rsa -pubout -in private.pem -out public.pem
-          # Base64 encode the private key so we can set it easily in env or output
-          PRIVATE_KEY_B64=$(base64 -w 0 private.pem)
-          echo "private_key_b64=$PRIVATE_KEY_B64" >> $GITHUB_OUTPUT
-          # Public key is plain text file, we commit it to terraform folder or pass as file
-
-      - name: Upload private key to AWS Secrets Manager
+      - name: Check for CloudFront private key in AWS Secrets Manager
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
-          PRIVATE_KEY_B64: ${{ steps.generate_keys.outputs.private_key_b64 }}
         run: |
-          echo $PRIVATE_KEY_B64 | base64 -d > private.pem
           SECRET_NAME="cloudfront-private-key"
-          set -e
-          if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
-            echo "Secret exists, updating..."
-            aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
-          else
-            echo "Secret does not exist, creating..."
-            aws secretsmanager create-secret --name "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
+          if ! aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
+            echo "❌ The secret '$SECRET_NAME' does not exist in AWS Secrets Manager."
+            echo "➡️  Please run the 'CloudFront Key Management' workflow to generate and upload the key pair before deploying."
+            exit 1
           fi
-      
-      - name: Prepare Terraform public key file
+
+      - name: Download private key from AWS Secrets Manager
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
-          cp public.pem terraform/deploy/public.pem
-          
-# checking the current terraform scripts before trying to apply it
-        
+          SECRET_NAME="cloudfront-private-key"
+          aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_REGION" --query SecretString --output text > private.pem
+
       - name: Terraform Init
         working-directory: terraform/deploy
         run: terraform init -input=false -upgrade
@@ -90,36 +74,18 @@ jobs:
         working-directory: terraform/deploy
         run: terraform plan
 
-      - name: Import existing resources if not in state then apply
+      - name: Terraform Apply
         working-directory: terraform/deploy
-        run: |
-          echo "Importing existing resources (ignoring errors)..."
-          terraform import aws_s3_bucket.lambda_bucket $BUCKET_NAME || true
-          terraform import aws_iam_role.lambda_exec_role lambda_execution_role || true
-          terraform import aws_lambda_function.pet_lambda aws-pet-project || true
-          terraform import aws_lambda_permission.allow_events aws-pet-project/AllowExecutionFromCloudWatch
-          
-          # Import CloudFront public key if it exists
-          PUBLIC_KEY_ID=$(aws cloudfront list-public-keys --query "PublicKeyList.Items[?Name=='cf-public-key'].Id" --output text)
-          if [ ! -z "$PUBLIC_KEY_ID" ]; then
-            echo "Importing existing CloudFront public key with ID $PUBLIC_KEY_ID"
-            terraform import aws_cloudfront_public_key.cf_public_key $PUBLIC_KEY_ID || true
-          else
-            echo "No existing CloudFront public key found, will create new."
-          fi
+        run: terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
 
-          echo "Starting terraform apply..."
-          terraform apply -auto-approve -var="bucket_name=$BUCKET_NAME"
-          echo "Terraform apply completed."
-
-# log  CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
+      # log CloudFront Distribution ID to be able to create a github secret out of it for the destroyall github workflow
       - name: Get CloudFront Distribution ID output from Terraform
         id: cloudfront_output
         working-directory: terraform/deploy
         run: |
           dist_id=$(terraform output -raw cloudfront_distribution_id)
           echo "cloudfront_distribution_id=$dist_id" >> "$GITHUB_OUTPUT"
-      
+
       - name: Log CloudFront Distribution ID
         run: |
           echo "CloudFront Distribution ID: $CLOUDFRONT_DIST_ID"

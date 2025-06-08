@@ -1,0 +1,67 @@
+name: CloudFront Key Management
+
+on:
+  workflow_dispatch:
+
+jobs:
+  manage-cloudfront-key:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: eu-north-1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate RSA key pair
+        run: |
+          openssl genrsa -out private.pem 2048
+          openssl rsa -pubout -in private.pem -out public.pem
+
+      - name: Upload private key to AWS Secrets Manager
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          SECRET_NAME="cloudfront-private-key"
+          if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" --region "$AWS_REGION" > /dev/null 2>&1; then
+            aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
+          else
+            aws secretsmanager create-secret --name "$SECRET_NAME" --secret-string file://private.pem --region "$AWS_REGION"
+          fi
+
+      - name: Prepare Terraform public key file
+        run: |
+          cp public.pem terraform/cloudfront-key/public.pem
+
+      - name: Terraform Init
+        working-directory: terraform/cloudfront-key
+        run: terraform init -input=false -upgrade
+
+      - name: Terraform Format Check
+        working-directory: terraform/cloudfront-key
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: terraform/cloudfront-key
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform/cloudfront-key
+        run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: terraform/cloudfront-key
+        run: terraform apply -auto-approve

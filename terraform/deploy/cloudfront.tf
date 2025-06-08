@@ -1,15 +1,5 @@
-resource "aws_cloudfront_key_group" "cf_key_group" {
+data "aws_cloudfront_key_group" "cf_key_group" {
   name = "cf-key-group"
-
-  items = [
-    aws_cloudfront_public_key.cf_public_key.id
-  ]
-}
-
-resource "aws_cloudfront_public_key" "cf_public_key" {
-  name        = "cf-public-key"
-  encoded_key = file("${path.module}/public.pem") # RSA public key from CI/CD
-  comment     = "Public key for signed URLs"
 }
 
 resource "aws_cloudfront_distribution" "cf_distribution" {
@@ -21,7 +11,7 @@ resource "aws_cloudfront_distribution" "cf_distribution" {
     origin_id   = "s3-origin"
 
     s3_origin_config {
-      origin_access_identity = "" # Not needed for signed URLs; leave blank or use OAC if needed
+      origin_access_identity = ""
     }
   }
 
@@ -33,7 +23,7 @@ resource "aws_cloudfront_distribution" "cf_distribution" {
     cached_methods  = ["GET", "HEAD"]
 
     trusted_key_groups = [
-      aws_cloudfront_key_group.cf_key_group.id
+      data.aws_cloudfront_key_group.cf_key_group.id
     ]
 
     forwarded_values {
